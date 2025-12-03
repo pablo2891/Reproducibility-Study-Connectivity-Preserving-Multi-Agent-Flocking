@@ -1,0 +1,5 @@
+robotarium-python-simulator
+numpy
+scipy
+matplotlib
+cvxopt
