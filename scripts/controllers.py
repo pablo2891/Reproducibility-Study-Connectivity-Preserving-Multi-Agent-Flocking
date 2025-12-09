@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def flocking_control(x_si, A, params):
+def flocking_control(x_si, A, params, vel_history=None):
     """
     Simple flocking-like controller using distance-based potentials.
 
@@ -11,11 +11,14 @@ def flocking_control(x_si, A, params):
         - r: collision avoidance radius
         - R: communication radius
         - alpha_potential: gain on potential term
+        - alpha_align: gain on velocity alignment
         - max_si_speed: max single-integrator speed
+    vel_history: 2 x N array of previous single-integrator velocities (optional)
     """
     r = params["r"]
     R = params["R"]
     alpha_potential = params["alpha_potential"]
+    alpha_align = params.get("alpha_align", 0.0)
     max_si_speed = params["max_si_speed"]
 
     _, N = x_si.shape
@@ -25,6 +28,7 @@ def flocking_control(x_si, A, params):
     for i in range(N):
         xi = x_si[:, i].reshape((2, 1))
         force = np.zeros((2, 1))
+        align_term = np.zeros((2, 1))
 
         for j in range(N):
             if i == j or A[i, j] == 0:
@@ -54,8 +58,13 @@ def flocking_control(x_si, A, params):
 
             force += alpha_potential * mag * direction
 
+            if vel_history is not None and alpha_align > 0.0:
+                align_term += alpha_align * (
+                    vel_history[:, j].reshape((2, 1)) - vel_history[:, i].reshape((2, 1))
+                )
+
         # Negative gradient direction
-        dxi[:, i] = -force.flatten()
+        dxi[:, i] = (-force + align_term).flatten()
 
     # Limit max speed per agent
     speeds = np.linalg.norm(dxi, axis=0)
